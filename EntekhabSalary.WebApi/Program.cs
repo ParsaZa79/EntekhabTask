@@ -12,51 +12,64 @@ using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(c =>
-{
-    c.SwaggerDoc("v1", new OpenApiInfo { Title = "My API", Version = "v1" });
-
-    var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
-    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
-    c.IncludeXmlComments(xmlPath);
-});
-
-
-builder.Services.AddScoped<IEmployeeService, EmployeeService>();
-builder.Services.AddScoped<IEmployeeSalaryService, EmployeeSalaryService>();
-
-builder.Services.AddScoped<IEmployeeRepository, EmployeeRepository>();
-builder.Services.AddScoped<IEmployeeSalaryRepository, EmployeeSalaryRepository>();
-
-builder.Services.AddSingleton<IDataSerializerFactory, DataSerializerFactory>();
-builder.Services.AddSingleton<IOvertimePolicyCalculatorFactory, OvertimePolicyCalculatorFactory>();
-
-builder.Services.AddScoped<ISalaryCalculator, DefaultSalaryCalculator>();
-
-builder.Services.AddSingleton<DapperDbContext>();
-
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-builder.Services.AddDbContext<EfDbContext>(options =>
-    options.UseSqlite(connectionString));
-
-builder.Services.AddLogging();
+ConfigureServices(builder.Services, builder.Configuration);
+ConfigureSwagger(builder.Services);
 
 MappingConfig.RegisterMappings();
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
-
-app.UseHttpsRedirection();
-
-app.UseAuthorization();
-
-app.MapControllers();
+ConfigureApp(app);
 
 app.Run();
+
+void ConfigureServices(IServiceCollection services, IConfiguration configuration)
+{
+    services.AddControllers();
+    services.AddEndpointsApiExplorer();
+
+    services.AddScoped<IEmployeeService, EmployeeService>();
+    services.AddScoped<IEmployeeSalaryService, EmployeeSalaryService>();
+
+    services.AddScoped<IEmployeeRepository, EmployeeRepository>();
+    services.AddScoped<IEmployeeSalaryRepository, EmployeeSalaryRepository>();
+
+    services.AddSingleton<IDataSerializerFactory, DataSerializerFactory>();
+    services.AddSingleton<IOvertimePolicyCalculatorFactory, OvertimePolicyCalculatorFactory>();
+
+    services.AddScoped<ISalaryCalculator, DefaultSalaryCalculator>();
+
+    services.AddSingleton<DapperDbContext>();
+
+    var connectionString = configuration.GetConnectionString("DefaultConnection");
+    services.AddDbContext<EfDbContext>(options => options.UseSqlite(connectionString));
+
+    services.AddLogging();
+}
+
+void ConfigureSwagger(IServiceCollection services)
+{
+    services.AddSwaggerGen(c =>
+    {
+        c.SwaggerDoc("v1", new OpenApiInfo { Title = "My API", Version = "v1" });
+
+        var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+        var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+        c.IncludeXmlComments(xmlPath);
+    });
+}
+
+void ConfigureApp(WebApplication webApplication)
+{
+    if (webApplication.Environment.IsDevelopment())
+    {
+        webApplication.UseSwagger();
+        webApplication.UseSwaggerUI();
+    }
+
+    webApplication.UseHttpsRedirection();
+
+    webApplication.UseAuthorization();
+
+    webApplication.MapControllers();
+}
