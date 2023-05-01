@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace EntekhabSalary.WebApi.Controllers;
 
 [ApiController]
-[Route("{dataType}/api/[controller]/[action]")]
+[Route("{dataType?}/api/[controller]/[action]")]
 public class EmployeeController : ControllerBase
 {
 
@@ -26,11 +26,13 @@ public class EmployeeController : ControllerBase
     /// <remarks>
     /// Sample request:
     ///
-    ///     POST /api/employees
+    ///     POST /json/api/employee/add
     ///     {
-    ///         "name": "John Doe",
-    ///         "position": "Software Engineer"
+    ///         "data": "Ali/Ahmadi/1200000/400000/350000/14010801",
+    ///         "overTimeCalculator": "CalculatorA"
     ///     }
+    ///
+    /// The dataType parameter in the route can be "json", "xml", "cs", or "custom".
     /// </remarks>
     /// <param name="addEmployeeRequest">The employee data to be added.</param>
     /// <param name="dataType">The data type.</param>
@@ -42,24 +44,20 @@ public class EmployeeController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Add(AddEmployeeRequest addEmployeeRequest, [FromRoute] string dataType)
     {
+        if (!ModelState.IsValid)
+            return BadRequest(ResponseBase<string>.CreateErrorResponse("Invalid or incomplete request data!"));
+
         try
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ResponseBase<string>.CreateErrorResponse("Invalid or incomplete request data!"));
-            }
-
             var result = await _employeeService.AddEmployee(addEmployeeRequest, dataType);
-            if (result is null)
-            {
-                return StatusCode(500, ResponseBase<string>.CreateErrorResponse("An error occurred while adding the employee!")); 
-            }
-            
-            return Ok(ResponseBase<int?>.CreateSuccessResponse(result));
+            return result is not null
+                ? Ok(ResponseBase<int?>.CreateSuccessResponse(result))
+                : StatusCode(500,
+                    ResponseBase<string>.CreateErrorResponse("Failed to add employee."));
         }
         catch (Exception e)
         {
-            return StatusCode(500, ResponseBase<string>.CreateErrorResponse("An error occurred while adding the employee!"));
+            return StatusCode(500, ResponseBase<string>.CreateErrorResponse($"Error occurred while adding employee: {e.Message}"));
         }
     }
     
@@ -85,26 +83,24 @@ public class EmployeeController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> Update(UpdateEmployeeRequest updateEmployeeRequest)
+    public async Task<IActionResult> Update(UpdateEmployeeRequest updateEmployeeRequest, string dataType = "json")
     {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ResponseBase<string>.CreateErrorResponse("Invalid or incomplete request data!"));
+        }
+        
         try
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ResponseBase<string>.CreateErrorResponse("Invalid or incomplete request data!"));
-            }
-
             var result = await _employeeService.UpdateEmployee(updateEmployeeRequest);
-            if (!result)
-            {
-                return StatusCode(500, ResponseBase<string>.CreateErrorResponse("An error occurred while updating the employee!")); 
-            }
-            
-            return Ok(ResponseBase<bool>.CreateSuccessResponse(result));
+            return !result
+                ? StatusCode(500,
+                    ResponseBase<string>.CreateErrorResponse($"Employee with id {updateEmployeeRequest.Employee.Id} does not exist!"))
+                : Ok(ResponseBase<bool>.CreateSuccessResponse(result));
         }
         catch (Exception e)
         {
-            return StatusCode(500, ResponseBase<string>.CreateErrorResponse("An error occurred while updating the employee!"));
+            return StatusCode(500, ResponseBase<string>.CreateErrorResponse($"Error occurred while updating the employee :{e.Message}!"));
         }
     }
 
@@ -118,27 +114,25 @@ public class EmployeeController : ControllerBase
     [HttpDelete("{id}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> Delete(int id)
+    public async Task<IActionResult> Delete(int id, string dataType = "json")
     {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ResponseBase<string>.CreateErrorResponse("Invalid or incomplete request data!"));
+        }
+
         try
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ResponseBase<string>.CreateErrorResponse("Invalid or incomplete request data!"));
-            }
-            
             var result = await _employeeService.DeleteEmployee(id);
 
-            if (!result)
-            {
-                return StatusCode(500, ResponseBase<string>.CreateErrorResponse("An error occurred while deleting the employee!"));
-            }
-            
-            return Ok(ResponseBase<bool>.CreateSuccessResponse(result));
+            return !result
+                ? StatusCode(500,
+                    ResponseBase<string>.CreateErrorResponse($"Employee with id {id} does not exist!"))
+                : Ok(ResponseBase<bool>.CreateSuccessResponse(result));
         }
         catch (Exception e)
         {
-            return StatusCode(500, ResponseBase<string>.CreateErrorResponse("An error occurred while deleting the employee!"));
+            return StatusCode(500, ResponseBase<string>.CreateErrorResponse($"Error occurred while deleting the employee: {e.Message}!"));
         }
     }
 
@@ -152,26 +146,25 @@ public class EmployeeController : ControllerBase
     [HttpGet("{id}")]
     [ProducesResponseType(typeof(Employee), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> Get(int id)
+    public async Task<IActionResult> Get(int id, string dataType = "json")
     {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ResponseBase<string>.CreateErrorResponse("Invalid or incomplete request data!"));
+        }
+        
         try
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ResponseBase<string>.CreateErrorResponse("Invalid or incomplete request data!"));
-            }
 
             var result = await _employeeService.GetEmployee(id);
-            if (result is null)
-            {
-                return StatusCode(500, ResponseBase<string>.CreateErrorResponse($"Employee with id {id} does not exist!")); 
-            }
-            
-            return Ok(ResponseBase<Employee>.CreateSuccessResponse(result));
+            return result is null
+                ? StatusCode(500,
+                    ResponseBase<string>.CreateErrorResponse($"Employee with id {id} does not exist!"))
+                : Ok(ResponseBase<Employee>.CreateSuccessResponse(result));
         }
         catch (Exception e)
         {
-            return StatusCode(500, ResponseBase<string>.CreateErrorResponse("An error occurred while getting the employee!"));
+            return StatusCode(500, ResponseBase<string>.CreateErrorResponse($"Error occurred while getting the employee: {e.Message}!"));
         }
     }
     
@@ -185,26 +178,24 @@ public class EmployeeController : ControllerBase
     [HttpPost]
     [ProducesResponseType(typeof(ResponseBase<List<Employee>>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ResponseBase<string>), StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> GetRange(int id, DateTime startDate, DateTime endDate)
+    public async Task<IActionResult> GetRange(int id, DateTime startDate, DateTime endDate, string dataType = "json")
     {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ResponseBase<string>.CreateErrorResponse("Invalid or incomplete request data!"));
+        }
+        
         try
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ResponseBase<string>.CreateErrorResponse("Invalid or incomplete request data!"));
-            }
-
             var result = (await _employeeSalaryService.GetEmployeeSalariesInRangeAsync(id, startDate, endDate)).ToList();
-            if (!result.Any())
-            {
-                return StatusCode(500, ResponseBase<string>.CreateErrorResponse($"Employee with id {id} does not exist!")); 
-            }
-            
-            return Ok(ResponseBase<List<EmployeeSalary>>.CreateSuccessResponse(result));
+            return !result.Any()
+                ? StatusCode(500,
+                    ResponseBase<string>.CreateErrorResponse($"Employee with id {id} does not exist!"))
+                : Ok(ResponseBase<List<EmployeeSalary>>.CreateSuccessResponse(result));
         }
         catch (Exception e)
         {
-            return StatusCode(500, ResponseBase<string>.CreateErrorResponse("An error occurred while getting the employee!"));
+            return StatusCode(500, ResponseBase<string>.CreateErrorResponse($"Error occurred while getting the employee's info: {e.Message}!"));
         }
     }
 }
