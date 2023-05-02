@@ -11,6 +11,8 @@ namespace EmployeeSalary.Tests;
 
 public class EmployeeControllerTests
 {
+    #region Add method tests
+
     [Fact]
     public async Task AddEmployee_ValidRequest_AddsEmployeeSuccessfully()
     {
@@ -166,7 +168,10 @@ public class EmployeeControllerTests
         Assert.NotNull(response.Data);
     }
 
-    
+    #endregion
+
+    #region Update method tests
+
     [Fact]
     public async Task UpdateEmployee_InvalidRequest_ReturnsBadRequest()
     {
@@ -245,7 +250,6 @@ public class EmployeeControllerTests
         var statusCodeResult = Assert.IsType<StatusCodeResult>(result);
         Assert.Equal(500, statusCodeResult.StatusCode);
     }
-
     
     [Fact]
     public async Task UpdateEmployee_ValidRequest_UpdatesEmployeeSuccessfully()
@@ -280,5 +284,69 @@ public class EmployeeControllerTests
         Assert.True(response.Data);
     }
 
+    #endregion
+
+    #region Delete method tests
+
+    [Fact]
+    public async Task DeleteEmployee_ValidRequest_DeletesEmployeeSuccessfully()
+    {
+        // Arrange
+        var employeeServiceMock = new Mock<IEmployeeService>();
+        var employeeSalaryServiceMock = new Mock<IEmployeeSalaryService>();
+        employeeServiceMock.Setup(es => es.DeleteEmployee(1)).ReturnsAsync(true);
+
+        var controller = new EmployeeController(employeeServiceMock.Object, employeeSalaryServiceMock.Object);
+
+        // Act
+        var result = await controller.Delete(1);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var response = Assert.IsType<ResponseBase<bool>>(okResult.Value);
+        Assert.True(response.IsSuccess);
+        Assert.True(response.Data);
+    }
+
+    
+    [Fact]
+    public async Task DeleteEmployee_EmployeeNotFound_ReturnsNotFound()
+    {
+        // Arrange
+        var employeeServiceMock = new Mock<IEmployeeService>();
+        var employeeSalaryServiceMock = new Mock<IEmployeeSalaryService>();
+        employeeServiceMock.Setup(es => es.DeleteEmployee(1)).ReturnsAsync(false);
+
+        var controller = new EmployeeController(employeeServiceMock.Object, employeeSalaryServiceMock.Object);
+
+        // Act
+        var result = await controller.Delete(1);
+
+        // Assert
+        var statusCodeResult = Assert.IsType<StatusCodeResult>(result);
+        Assert.Equal(500, statusCodeResult.StatusCode);
+    }
+
+    [Fact]
+    public async Task DeleteEmployee_ExceptionDuringDeletion_ReturnsInternalServerError()
+    {
+        // Arrange
+        var employeeServiceMock = new Mock<IEmployeeService>();
+        var employeeSalaryServiceMock = new Mock<IEmployeeSalaryService>();
+        employeeServiceMock.Setup(es => es.DeleteEmployee(1)).ThrowsAsync(new Exception("Error deleting employee"));
+
+        var controller = new EmployeeController(employeeServiceMock.Object, employeeSalaryServiceMock.Object);
+
+        // Act
+        var result = await controller.Delete(1);
+
+        // Assert
+        var statusCodeResult = Assert.IsType<StatusCodeResult>(result);
+        Assert.Equal(500, statusCodeResult.StatusCode);
+    }
+
+    #endregion
+
+    
 
 }
