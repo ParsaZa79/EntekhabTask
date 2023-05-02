@@ -1,4 +1,3 @@
-using System.Text.Json;
 using EntekhabSalary.WebApi.Contracts.Requests;
 using EntekhabSalary.WebApi.Contracts.Responses;
 using EntekhabSalary.WebApi.Controllers;
@@ -414,6 +413,95 @@ public class EmployeeControllerTests
         Assert.Equal(500, statusCodeResult.StatusCode);
     }
     
+    #endregion
+
+    #region GetRange method tests
+
+    [Fact]
+    public async Task GetRange_ValidRequest_ReturnsEmployeeSalaryDataSuccessfully()
+    {
+        // Arrange
+        var employeeServiceMock = new Mock<IEmployeeService>();
+        var employeeSalaryServiceMock = new Mock<IEmployeeSalaryService>();
+        var expectedEmployeeSalaries = new List<EntekhabSalary.WebApi.Models.EmployeeSalary>
+        {
+            new()
+            {
+                Id = 1,
+                EmployeeId = 1,
+                SalaryDate = DateTime.Parse("1401-03-04"),
+                TotalSalary = 2900000
+            }
+        };
+        employeeSalaryServiceMock.Setup(ess => ess.GetEmployeeSalariesInRangeAsync(1, It.IsAny<DateTime>(), It.IsAny<DateTime>()))
+            .ReturnsAsync(expectedEmployeeSalaries);
+
+        var controller = new EmployeeController(employeeServiceMock.Object, employeeSalaryServiceMock.Object);
+
+        // Act
+        var result = await controller.GetRange(1, DateTime.Now.AddDays(-7), DateTime.Now);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var response = Assert.IsType<ResponseBase<List<EntekhabSalary.WebApi.Models.EmployeeSalary>>>(okResult.Value);
+        Assert.True(response.IsSuccess);
+        Assert.Equal(expectedEmployeeSalaries, response.Data);
+    }
+
+    [Fact]
+    public async Task GetRange_InvalidRequest_ReturnsBadRequest()
+    {
+        // Arrange
+        var employeeServiceMock = new Mock<IEmployeeService>();
+        var employeeSalaryServiceMock = new Mock<IEmployeeSalaryService>();
+        var controller = new EmployeeController(employeeServiceMock.Object, employeeSalaryServiceMock.Object);
+        controller.ModelState.AddModelError("startDate", "Start date is required");
+
+        // Act
+        var result = await controller.GetRange(1, DateTime.MinValue, DateTime.Now);
+
+        // Assert
+        Assert.IsType<BadRequestObjectResult>(result);
+    }
+
+    [Fact]
+    public async Task GetRange_NoEmployeeSalaryDataFound_ReturnsNotFound()
+    {
+        // Arrange
+        var employeeServiceMock = new Mock<IEmployeeService>();
+        var employeeSalaryServiceMock = new Mock<IEmployeeSalaryService>();
+        employeeSalaryServiceMock.Setup(ess => ess.GetEmployeeSalariesInRangeAsync(1, It.IsAny<DateTime>(), It.IsAny<DateTime>()))
+            .ReturnsAsync(new List<EntekhabSalary.WebApi.Models.EmployeeSalary>());
+
+        var controller = new EmployeeController(employeeServiceMock.Object, employeeSalaryServiceMock.Object);
+
+        // Act
+        var result = await controller.GetRange(1, DateTime.Now.AddDays(-7), DateTime.Now);
+
+        // Assert
+        var statusCodeResult = Assert.IsType<StatusCodeResult>(result);
+        Assert.Equal(500, statusCodeResult.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetRange_ExceptionDuringRetrieval_ReturnsInternalServerError()
+    {
+        // Arrange
+        var employeeServiceMock = new Mock<IEmployeeService>();
+        var employeeSalaryServiceMock = new Mock<IEmployeeSalaryService>();
+        employeeSalaryServiceMock.Setup(ess => ess.GetEmployeeSalariesInRangeAsync(1, It.IsAny<DateTime>(), It.IsAny<DateTime>()))
+            .ThrowsAsync(new Exception("Error retrieving employee salary data"));
+
+        var controller = new EmployeeController(employeeServiceMock.Object, employeeSalaryServiceMock.Object);
+
+        // Act
+        var result = await controller.GetRange(1, DateTime.Now.AddDays(-7), DateTime.Now);
+
+        // Assert
+        var statusCodeResult = Assert.IsType<StatusCodeResult>(result);
+        Assert.Equal(500, statusCodeResult.StatusCode);
+    }
+
     #endregion
 
 }
