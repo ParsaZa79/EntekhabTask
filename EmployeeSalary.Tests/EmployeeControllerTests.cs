@@ -347,6 +347,73 @@ public class EmployeeControllerTests
 
     #endregion
 
+    #region Get method tests
+
+    [Fact]
+    public async Task GetEmployee_ValidRequest_ReturnsEmployeeSuccessfully()
+    {
+        // Arrange
+        var employeeServiceMock = new Mock<IEmployeeService>();
+        var employeeSalaryServiceMock = new Mock<IEmployeeSalaryService>();
+        var expectedEmployee = new Employee
+        {
+            Id = 1,
+            FirstName = "Jane",
+            LastName = "Doe",
+            BasicSalary = 2900000,
+            Allowance = 30000,
+            Transportation = 25000
+        };
+        employeeServiceMock.Setup(es => es.GetEmployee(1)).ReturnsAsync(expectedEmployee);
+
+        var controller = new EmployeeController(employeeServiceMock.Object, employeeSalaryServiceMock.Object);
+
+        // Act
+        var result = await controller.Get(1);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var response = Assert.IsType<ResponseBase<Employee>>(okResult.Value);
+        Assert.True(response.IsSuccess);
+        Assert.Equal(expectedEmployee, response.Data);
+    }
+
+    [Fact]
+    public async Task GetEmployee_EmployeeNotFound_ReturnsNotFound()
+    {
+        // Arrange
+        var employeeServiceMock = new Mock<IEmployeeService>();
+        var employeeSalaryServiceMock = new Mock<IEmployeeSalaryService>();
+        employeeServiceMock.Setup(es => es.GetEmployee(1)).ReturnsAsync((Employee)null!);
+
+        var controller = new EmployeeController(employeeServiceMock.Object, employeeSalaryServiceMock.Object);
+
+        // Act
+        var result = await controller.Get(1);
+
+        // Assert
+        var statusCodeResult = Assert.IsType<StatusCodeResult>(result);
+        Assert.Equal(500, statusCodeResult.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetEmployee_ExceptionDuringRetrieval_ReturnsInternalServerError()
+    {
+        // Arrange
+        var employeeServiceMock = new Mock<IEmployeeService>();
+        var employeeSalaryServiceMock = new Mock<IEmployeeSalaryService>();
+        employeeServiceMock.Setup(es => es.GetEmployee(1)).ThrowsAsync(new Exception("Error retrieving employee"));
+
+        var controller = new EmployeeController(employeeServiceMock.Object, employeeSalaryServiceMock.Object);
+
+        // Act
+        var result = await controller.Get(1);
+
+        // Assert
+        var statusCodeResult = Assert.IsType<StatusCodeResult>(result);
+        Assert.Equal(500, statusCodeResult.StatusCode);
+    }
     
+    #endregion
 
 }
